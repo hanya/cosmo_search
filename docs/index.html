@@ -32,8 +32,8 @@
 .container {
     width: calc(100% - 10px);
     overflow: auto;
-    height: calc(100% - 140px);
-    top: 140px;
+    height: calc(100% - 160px);
+    top: 160px;
     position: absolute;
 }
 .desc {
@@ -45,7 +45,7 @@
     display: flex;
     flex-direction: row;
     align-items: start;
-    min-height: 140px;
+    min-height: 160px;
 }
 #result-table {
     font-size: 12px;
@@ -60,8 +60,9 @@
     margin-left: 5px;
 }
 </style>
+<script src="https://cdn.jsdelivr.net/gh/hamada147/IsThisColourSimilar@master/Colour.js" ></script>
 <body>
-<script type="text/javascript">
+<script>
 // [name, r, g, b, x, y, z, L, a, b]
 const colors = [
 ["351", 255, 217, 211, 0.7781, 0.7559, 0.7212, 71.6831, 31.3704, 18.7313],
@@ -245,7 +246,7 @@ const colors = [
 ["705A", 166, 111, 47, 0.2192, 0.1968, 0.0533, 6.8301, 16.9202, 29.5685],
 ["706", 143, 90, 46, 0.1548, 0.1335, 0.0435, -0.5149, 14.6689, 18.7174],
 ["572", 244, 220, 148, 0.6825, 0.7256, 0.3843, 68.1668, -3.7837, 74.5459],
-["573", 294, 216, 111, 0.8450, 0.7968, 0.2597, 76.4301, 46.0819, 111.6754],
+["573", 243, 209, 111, 0.8450, 0.7968, 0.2597, 76.4301, 46.0819, 111.6754],
 ["2573", 222, 177, 84, 0.4745, 0.4761, 0.1508, 39.2322, 11.5176, 67.5379],
 ["574", 232, 181, 63, 0.5070, 0.5056, 0.1179, 42.6524, 13.8885, 79.4720],
 ["575A", 197, 145, 61, 0.3399, 0.3246, 0.0889, 21.6513, 16.5297, 48.5924],
@@ -569,6 +570,7 @@ const colors = [
 const rowsCount = [39, 35, 40, 33, 33, 40, 42, 41, 37, 35, 29, 33, 34, 29];
 
 window.onload = function () {
+    const showHex = isHex();
     const d = document.getElementById('color-tables');
     let n = 0;
     for (const rows of rowsCount) {
@@ -582,7 +584,7 @@ window.onload = function () {
 
             const tdName = document.createElement('td');
             tdName.classList.add('name');
-            tdName.innerHTML = `${colorDef[0]}<br><span class="rgb">${colorDef[1]}, ${colorDef[2]}, ${colorDef[3]}</span>`;
+            setColor(tdName, colorDef, showHex);
 
             const tr = document.createElement('tr');
             tr.appendChild(tdColor);
@@ -593,11 +595,25 @@ window.onload = function () {
         d.appendChild(table);
     }
 
+    function setColor(element, color, showHex) {
+        if (showHex) {
+            const value = rgbToHex(color[1], color[2], color[3]);
+            element.innerHTML = `${color[0]}<br><span class="rgb">${value}</span>`;
+        } else {
+            element.innerHTML = `${color[0]}<br><span class="rgb">${color[1]}, ${color[2]}, ${color[3]}</span>`;
+        }
+    }
+
+    function isHex() {
+        return document.getElementById('hex').checked;
+    }
+
     function readRGB() {
         const value = document.getElementById('rgb-value').value.trim();
         const values = value.split(',');
         if (values.length == 3) {
-            return [parseInt(values[0].trim()),
+            return [0,
+                    parseInt(values[0].trim()),
                     parseInt(values[1].trim()),
                     parseInt(values[2].trim())];
         } else if (values.length == 1) {
@@ -605,7 +621,7 @@ window.onload = function () {
             const r = (color & 0xff0000) >> 16;
             const g = (color & 0xff00) >> 8;
             const b = color & 0xff;
-            return [r, g, b];
+            return [0, r, g, b];
         } else {
             return null;
         }
@@ -616,18 +632,22 @@ window.onload = function () {
         if (rgb === null) {
             return;
         }
-        const baseR = rgb[0] / 255;
-        const baseG = rgb[1] / 255;
-        const baseB = rgb[2] / 255;
+        const baseR = rgb[1] / 255;
+        const baseG = rgb[2] / 255;
+        const baseB = rgb[3] / 255;
         const [x, y, z] = rgbToXYZ(baseR, baseG, baseB);
         const [L, a, b] = xyzToLab(x, y, z);
 
-        document.getElementById('target-color').style = `background: rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]});`;
-        document.getElementById('target-name').innerHTML = `<br><span class="rgb">${rgb[0]}, ${rgb[1]}, ${rgb[2]}</span>`;
+        const showHex = isHex();
+
+        document.getElementById('target-color').style = `background: rgb(${rgb[1]}, ${rgb[2]}, ${rgb[3]});`;
+        //document.getElementById('target-name').innerHTML = `<br><span class="rgb">${rgb[1]}, ${rgb[2]}, ${rgb[3]}</span>`;
+        setColor(document.getElementById('target-name'), rgb);
 
         const dRGB = [];
         const dXYZ = [];
         const dLab = [];
+        const dCIEDE2k = [];
         for (let i = 0; i < colors.length; i++) {
             const color = colors[i];
             dRGB.push([color,
@@ -636,6 +656,8 @@ window.onload = function () {
                 distance(x, y, z, color[4], color[5], color[6])]);
             dLab.push([color,
                 distance(L, a, b, color[7], color[8], color[9])]);
+            dCIEDE2k.push([color,
+                Colour.deltaE00(L, a, b, color[7], color[8], color[9])]);
         }
         function sortFunc(a, b) {
             return a[1] - b[1];
@@ -643,6 +665,7 @@ window.onload = function () {
         dRGB.sort(sortFunc);
         dXYZ.sort(sortFunc);
         dLab.sort(sortFunc);
+        dCIEDE2k.sort(sortFunc);
 
         function pushResult(r, tag) {
             for (let i = 0; i < 7; i++) {
@@ -650,12 +673,14 @@ window.onload = function () {
                 const tdColor = document.getElementById(`${tag}-color${i + 1}`);
                 tdColor.style = `background: rgb(${color[1]}, ${color[2]}, ${color[3]});`;
                 const tdName = document.getElementById(`${tag}-name${i + 1}`);
-                tdName.innerHTML = `${color[0]}<br><span class="rgb">${color[1]}, ${color[2]}, ${color[3]}</span>`;
+                setColor(tdName, color, showHex);
+                tdColor.title = "Distance: " + distance.toString().substr(0, 4);
             }
         }
         pushResult(dRGB, "rgb");
         pushResult(dXYZ, "xyz");
         pushResult(dLab, "lab");
+        pushResult(dCIEDE2k, "ciede2k");
         /*
         // output [name, r, g, b, x, y, z, L, a, b]
         for (let i = 0; i < colors.length; i++) {
@@ -711,20 +736,48 @@ window.onload = function () {
         const b = 200 * (yyw - zzw);
         return [L, a, b];
     }
+
+    function rgbToHex(r, g, b) {
+        let rh = r.toString(16);
+        let gh = g.toString(16);
+        let bh = b.toString(16);
+        return (rh.length == 2 ? rh : "0" + rh) +
+               (gh.length == 2 ? gh : "0" + gh) +
+               (bh.length == 2 ? bh : "0" + bh);
+    }
 }
 </script>
 <div id="search-container">
     <div id="search">
         <div class="desc">RGB値からコスモ25番刺しゅう糸の近い色を検索</div>
-        <div class="desc">2021年カタログの色より</div>
-        <div class="desc">実際の色は実物の糸で要確認</div>
-        <div class="desc">色コードをrr, gg, bb(十進数)または<br>rrggbb(十六進数)形式で入力</div>
+        <div class="desc">2021年カタログより、色は実物の糸で要確認</div>
+        <div class="desc">色コードをRR, GG, BB(十進数)または<br>rrggbb(十六進数)形式で入力</div>
         <input type="text" id="rgb-value">
         <input type="button" id="start" value="検索">
+        <div class="desc"><input type="radio" id="hex" name="colorType" checked><label for="hex">十六進数</label>
+                          <input type="radio" id="rbg" name="colorType"><label for="rgb">RR,GG,BB</label></div>
     </div>
     <div id="result">
         <table id="result-table">
         <tr><td>検索色</td><td id="target-color" class="color" style="background: #ffffff;"></td><td id="target-name" class="name"><br><span class="rgb">255, 255, 255</span></td></tr>
+        <tr><td>CIEDE2000</td>
+            <td id="ciede2k-color1" class="color"></td><td id="ciede2k-name1" class="name"></td>
+            <td id="ciede2k-color2" class="color"></td><td id="ciede2k-name2" class="name"></td>
+            <td id="ciede2k-color3" class="color"></td><td id="ciede2k-name3" class="name"></td>
+            <td id="ciede2k-color4" class="color"></td><td id="ciede2k-name4" class="name"></td>
+            <td id="ciede2k-color5" class="color"></td><td id="ciede2k-name5" class="name"></td>
+            <td id="ciede2k-color6" class="color"></td><td id="ciede2k-name6" class="name"></td>
+            <td id="ciede2k-color7" class="color"></td><td id="ciede2k-name7" class="name"></td>
+        </tr>
+        <tr><td>Lab</td>
+            <td id="lab-color1" class="color"></td><td id="lab-name1" class="name"></td>
+            <td id="lab-color2" class="color"></td><td id="lab-name2" class="name"></td>
+            <td id="lab-color3" class="color"></td><td id="lab-name3" class="name"></td>
+            <td id="lab-color4" class="color"></td><td id="lab-name4" class="name"></td>
+            <td id="lab-color5" class="color"></td><td id="lab-name5" class="name"></td>
+            <td id="lab-color6" class="color"></td><td id="lab-name6" class="name"></td>
+            <td id="lab-color7" class="color"></td><td id="lab-name7" class="name"></td>
+        </tr>
         <tr><td>RGB</td>
             <td id="rgb-color1" class="color"></td><td id="rgb-name1" class="name"></td>
             <td id="rgb-color2" class="color"></td><td id="rgb-name2" class="name"></td>
@@ -742,15 +795,6 @@ window.onload = function () {
             <td id="xyz-color5" class="color"></td><td id="xyz-name5" class="name"></td>
             <td id="xyz-color6" class="color"></td><td id="xyz-name6" class="name"></td>
             <td id="xyz-color7" class="color"></td><td id="xyz-name7" class="name"></td>
-        </tr>
-        <tr><td>Lab</td>
-            <td id="lab-color1" class="color"></td><td id="lab-name1" class="name"></td>
-            <td id="lab-color2" class="color"></td><td id="lab-name2" class="name"></td>
-            <td id="lab-color3" class="color"></td><td id="lab-name3" class="name"></td>
-            <td id="lab-color4" class="color"></td><td id="lab-name4" class="name"></td>
-            <td id="lab-color5" class="color"></td><td id="lab-name5" class="name"></td>
-            <td id="lab-color6" class="color"></td><td id="lab-name6" class="name"></td>
-            <td id="lab-color7" class="color"></td><td id="lab-name7" class="name"></td>
         </tr>
         </table>
     </div>
